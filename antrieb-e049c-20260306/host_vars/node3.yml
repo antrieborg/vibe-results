@@ -1,0 +1,1 @@
+ansible_host: "{{ lookup('env', 'NODE3_IP') }}"
