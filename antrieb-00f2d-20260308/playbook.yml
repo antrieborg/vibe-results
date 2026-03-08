@@ -1,0 +1,12 @@
+---
+- name: Retrieve APPLICATION_USERNAME environment variable
+  hosts: targets
+  tasks:
+    - name: Get APPLICATION_USERNAME from environment
+      ansible.builtin.shell: echo $APPLICATION_USERNAME
+      register: app_username
+      changed_when: false
+
+    - name: Display APPLICATION_USERNAME
+      ansible.builtin.debug:
+        msg: "APPLICATION_USERNAME={{ app_username.stdout }}"
