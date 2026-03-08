@@ -1,0 +1,21 @@
+---
+- name: Retrieve APPLICATION_USERNAME from LDAP server
+  hosts: targets
+  tasks:
+    - name: Query LDAP server for APPLICATION_USERNAME
+      ansible.builtin.shell: |
+        ldapsearch -x -H ldap://localhost -b "cn=config" "objectClass=*" | grep -i "APPLICATION_USERNAME" || echo "APPLICATION_USERNAME not found"
+      register: ldap_query_result
+      changed_when: false
+
+    - name: Display APPLICATION_USERNAME value
+      ansible.builtin.debug:
+        msg: "{{ ldap_query_result.stdout }}"
+
+    - name: Set APPLICATION_USERNAME fact
+      ansible.builtin.set_fact:
+        application_username: "{{ ldap_query_result.stdout }}"
+
+    - name: Return APPLICATION_USERNAME
+      ansible.builtin.debug:
+        var: application_username
