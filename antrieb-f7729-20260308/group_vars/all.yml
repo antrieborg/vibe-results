@@ -1,0 +1,7 @@
+ansible_user: antrieb
+ansible_become: true
+ldap_server: "{{ hostvars['node2']['ansible_host'] }}"
+ldap_port: 389
+ldap_base_dn: "dc=example,dc=com"
+ldap_bind_dn: "cn=admin,dc=example,dc=com"
+ldap_bind_password: "admin"

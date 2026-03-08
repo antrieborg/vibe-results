@@ -1,0 +1,84 @@
+---
+- name: Install OpenLDAP server and set environment variables
+  hosts: targets
+  become: true
+  tasks:
+    - name: Install OpenLDAP server and utilities
+      ansible.builtin.apt:
+        name:
+          - slapd
+          - ldap-utils
+          - python3-ldap
+        state: present
+
+    - name: Start and enable slapd
+      ansible.builtin.systemd:
+        name: slapd
+        state: started
+        enabled: true
+
+    - name: Create LDAP directory for environment variables
+      ansible.builtin.file:
+        path: /etc/ldap/env_vars
+        state: directory
+        mode: "0755"
+
+    - name: Create LDAP entry with environment variables
+      ansible.builtin.copy:
+        dest: /tmp/add_env_vars.ldif
+        content: |
+          dn: cn=application,dc=example,dc=com
+          objectClass: device
+          cn: application
+          description: Application configuration
+          applicationUsername: myappuser
+          applicationSecret: myappsecret123
+
+    - name: Add LDAP entry with environment variables
+      ansible.builtin.shell: |
+        ldapadd -x -D "cn=admin,dc=example,dc=com" -w admin -f /tmp/add_env_vars.ldif 2>/dev/null || true
+      changed_when: false
+
+- name: Retrieve environment variables from OpenLDAP server
+  hosts: controllers
+  tasks:
+    - name: Install LDAP utilities on controller
+      ansible.builtin.apt:
+        name:
+          - ldap-utils
+          - python3-ldap
+        state: present
+      become: true
+
+    - name: Query LDAP for APPLICATION_USERNAME
+      ansible.builtin.shell: |
+        ldapsearch -x -H ldap://{{ ldap_server }}:{{ ldap_port }} \
+          -D "{{ ldap_bind_dn }}" -w "{{ ldap_bind_password }}" \
+          -b "{{ ldap_base_dn }}" "cn=application" applicationUsername | grep applicationUsername | awk '{print $2}'
+      register: ldap_username
+      changed_when: false
+
+    - name: Query LDAP for APPLICATION_SECRET
+      ansible.builtin.shell: |
+        ldapsearch -x -H ldap://{{ ldap_server }}:{{ ldap_port }} \
+          -D "{{ ldap_bind_dn }}" -w "{{ ldap_bind_password }}" \
+          -b "{{ ldap_base_dn }}" "cn=application" applicationSecret | grep applicationSecret | awk '{print $2}'
+      register: ldap_secret
+      changed_when: false
+
+    - name: Display retrieved APPLICATION_USERNAME
+      ansible.builtin.debug:
+        msg: "APPLICATION_USERNAME={{ ldap_username.stdout }}"
+
+    - name: Display retrieved APPLICATION_SECRET
+      ansible.builtin.debug:
+        msg: "APPLICATION_SECRET={{ ldap_secret.stdout }}"
+
+    - name: Save environment variables to file
+      ansible.builtin.copy:
+        dest: /tmp/ldap_env_vars.txt
+        content: |
+          APPLICATION_USERNAME={{ ldap_username.stdout }}
+          APPLICATION_SECRET={{ ldap_secret.stdout }}
+        mode: "0600"
+      become: true
