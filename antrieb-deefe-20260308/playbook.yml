@@ -1,0 +1,23 @@
+---
+- name: Retrieve VAULT_TOKEN from vault server
+  hosts: targets
+  tasks:
+    - name: Check if VAULT_TOKEN environment variable exists
+      ansible.builtin.shell: echo $VAULT_TOKEN
+      register: vault_token_result
+      changed_when: false
+
+    - name: Display VAULT_TOKEN value
+      ansible.builtin.debug:
+        msg: "VAULT_TOKEN value: {{ vault_token_result.stdout }}"
+
+    - name: Store VAULT_TOKEN in a variable
+      ansible.builtin.set_fact:
+        retrieved_vault_token: "{{ vault_token_result.stdout }}"
+
+    - name: Verify VAULT_TOKEN was retrieved
+      ansible.builtin.assert:
+        that:
+          - retrieved_vault_token | length > 0
+        fail_msg: "VAULT_TOKEN is empty or not set"
+        success_msg: "VAULT_TOKEN successfully retrieved"
